@@ -1,0 +1,2434 @@
+***********#1********************************
+REPORT z280355_bl NO STANDARD PAGE HEADING LINE-COUNT 20(3) LINE-SIZE 500 MESSAGE-ID zhema_msgs.
+
+LOAD-OF-PROGRAM.
+  INCLUDE zhema_exinc.
+  SELECT-options s_vbeln for wa_tab-vbeln obligatory.
+
+INITIALIZATION.
+*  CLEAR: lt_tab ,wa_tab.
+  s_vbeln-low = '0090005190'.
+  s_vbeln-high = '0090005198'.
+  APPEND s_vbeln.
+
+AT SELECTION-SCREEN ON s_vbeln.
+  SELECT SINGLE vbeln INTO lv_vbeln FROM z280355vbrk
+  WHERE vbeln in s_vbeln.
+  IF sy-subrc EQ 0.
+    MESSAGE s001.
+  ELSE.
+    MESSAGE e001.
+endif.
+
+START-OF-SELECTION.
+  PERFORM get_data4.
+
+END-OF-SELECTION.
+  PERFORM disp_data4.
+
+  lv_count = sy-linct - sy-linno.
+  SKIP lv_count.
+
+TOP-OF-PAGE.
+  ULINE.
+  WRITE:/ 'CLIENT: 100 USER:',  sy-uname, sy-datum, sy-uzeit.
+  WRITE:/ 'VBELN',
+  20 'FKART',
+  30 'FKTYP',
+  40 'VBTYP'.
+  ULINE.
+
+AT LINE-SELECTION.
+  CASE sy-lsind.
+    WHEN 1.
+      SELECT vbeln fkart fktyp vbtyp  INTO TABLE lt_tab FROM z280355vbrk
+        WHERE vbeln in s_vbeln.
+        LOOP AT lt_tab INTO wa_tab.
+          WRITE: wa_tab-vbeln HOTSPOT,
+          20 wa_tab-fkart ,
+          30 wa_tab-fktyp,
+          40 wa_tab-vbtyp.
+          HIDE wa_tab-vbeln.
+        ENDLOOP.
+ endcase.
+
+TOP-OF-PAGE DURING LINE-SELECTION.
+  CASE sy-lsind.
+
+    WHEN 1.
+      WRITE:/ 'records are found'.
+      ULINE.
+      WRITE:/ 'vbeln',
+      20 'posnr',
+      30 'vrkme',
+      40 'vgbel',
+      50 'meins'.
+      ULINE.
+
+ endcase.
+FORM get_data4 .
+  SELECT vbeln fkart fktyp vbtyp into TABLE lt_tab from z280355vbrk
+    where vbeln in s_vbeln.
+    if sy-subrc eq 0.
+      message s001.
+    else.
+      message e002.
+    endif.
+endform.
+
+FORM disp_data4.
+loop at lt_tab into wa_tab.
+  WRITE:/ wa_tab-vbeln hotspot,
+      20 wa_tab-fkart,
+      30 wa_tab-fktyp,
+      40 wa_tab-fkart.
+  hide wa_tab-vbeln.
+ endloop.
+ENDFORM.
+
+***include***
+TYPES: BEGIN OF LS_TAB, "ekko
+  VBELN TYPE VBELN,
+  FKART TYPE FKART,
+  FKTYP TYPE FKTYP,
+  VBTYP TYPE VBTYP,
+  END OF LS_TAB.
+TYPES : BEGIN OF LS_TAB2, ""ekpo
+  VBELN TYPE VBELN,
+  POSNR TYPE POSNR,
+  FKIMG TYPE FKIMG,
+  VRKME TYPE VRKME,
+  VGBEL TYPE VGBEL,
+  MEINS TYPE MEINS,
+  END OF LS_TAB2.
+DATA: LT_TAB TYPE STANDARD TABLE OF LS_TAB,
+      WA_TAB TYPE LS_TAB,
+      LT_TAB2 TYPE STANDARD TABLE OF LS_TAB2,
+      WA_TAB2 TYPE LS_TAB2,
+      LV_VBELN TYPE VBELN,
+      LV_COUNT TYPE I.
+
+
+***********#2***********************
+
+
+REPORT ZCL_HEMA_EKKO_DATA.
+
+data: lt_tab type zhema_ekko_tt.
+data i_obj type ref to z_hema_get_ekko.
+create object i_obj.
+data lv_ebeln type ebeln.
+select-options s_ebeln for lv_ebeln.
+start-of-selection.
+       CALL METHOD i_obj->get_ekko
+         EXPORTING
+           ebeln_l        =  s_ebeln-low
+           ebeln_h        =  s_ebeln-high
+         IMPORTING
+           it_tab_ekko    = lt_tab
+         EXCEPTIONS
+           ekko_not_found = 1
+           others         = 2
+               .
+       IF sy-subrc <> 0.
+*        Implement suitable error handling here
+       ENDIF.
+cl_demo_output=>display(
+data = lt_tab
+name = 'ekko data'
+).
+
+
+*********************#3******************
+
+REPORT ZDBV_PROG.
+
+types : begin of ls_tab,
+  vbeln type z280355vbeln,
+  vbtyp type vbtyp,
+  fktyp type fktyp,
+  end of ls_tab.
+data: lt_tab type standard table of  ls_tab,
+      wa_tab type ls_tab.
+data lv_vbeln type vbeln.
+select-options s_vbeln for lv_vbeln.
+select vbeln vbtyp fktyp  into table lt_tab
+  from z280355dbv
+  where vbeln in s_vbeln.
+loop at lt_tab into wa_tab.
+  write: / wa_tab-vbeln,
+  wa_tab-vbtyp,
+  wa_tab-fktyp.
+endloop.
+
+*****************#4*********
+
+REPORT ZHEMA_CLASSICAL_REP no standard page heading line-count 20(3)
+line-size 300 message-id zhema_msgs.
+
+load-of-program.
+include zhema_class_rep_inc.
+*select ebeln  bukrs BSTYP bsart  into table lt_tab from ekko
+*  where ebeln in s_ebeln.
+select-options s_ebeln for wa_tab-ebeln obligatory.
+initialization.
+clear: wa_tab, lt_tab.
+s_ebeln-low = '1'.
+s_ebeln-high = '50000000'.
+append s_ebeln.
+
+at selection-screen on s_ebeln.
+  select single ebeln
+    into lv_ebeln
+    from ekko
+    where ebeln in s_ebeln.
+if sy-subrc eq 0.
+  message s000.
+else .
+  message e001.
+endif.
+
+start-of-selection.
+  perform get_ekko_data.
+end-of-selection.
+
+perform display_ekko_data.
+
+data lv_count type I.
+lv_count = sy-linct - sy-linno.
+skip lv_count.
+
+top-of-page.
+uline.
+write: / 'purchasing document number' ,
+
+40   'company code',
+55  'category',
+70 'pd type'.
+
+uline.
+end-of-page.
+write: /'current page number' , sy-pagno,
+'date', sy-datum,
+'time',sy-uzeit.
+
+
+*&---------------------------------------------------------------------*
+*& Form get_ekko_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+
+
+FORM get_ekko_data .
+select ebeln  bukrs BSTYP bsart  into table lt_tab from ekko
+  where ebeln in s_ebeln.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_ekko_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_ekko_data .
+loop at lt_tab into wa_tab.
+  write: / wa_tab-ebeln,
+
+  40 wa_tab-bukrs,
+  55 wa_tab-ebstyp,
+  70 wa_tab-esart.
+  endloop.
+ENDFORM.
+
+**include**
+types : begin of ls_tab,
+   ebeln type EBELN,
+bukrs type BUKRS,
+EBSTYP type EBSTYP,
+ESART type esart ,
+  end of ls_tab.
+data: lt_tab type standard table of ls_tab,
+      wa_tab type ls_tab.
+data lv_ebeln type ebeln.
+
+*******************************#5********************************
+
+REPORT ZHEMA_DBVC.
+types : begin of ls_tab,
+  empid type zemp_id,
+  empname type z_ename,
+  deptid type z_deptid,
+  end of ls_tab.
+data: lt_tab type standard table of  ls_tab,
+      wa_tab type ls_tab.
+data lv_empid type z_empid.
+select-options s_empid for lv_empid.
+select empid empname deptid  into table lt_tab
+  from zdb_view
+  where empid in s_empid.
+loop at lt_tab into wa_tab.
+  write: / wa_tab-empid,
+  wa_tab-empname,
+  wa_tab-deptid.
+endloop.
+
+
+***************************#6************************************
+
+
+REPORT ZHEMA_GCL_METHODS.
+*data i_obj type ref to zcl_hema_gclass.
+*create object i_obj.
+*start-of-selection.
+*i_obj->meth_1( ).
+*skip 3.
+*zcl_hema_gclass=>method_2( ).
+*end-of-selection.
+
+***creating methods in local class******
+class cl_hema_meth definition.
+  public section.
+  methods im_1.
+  class-methods cm_1.
+  class-data : var_1 type i value 100,
+        var_2 type i value 50,
+  var_3 type i .
+
+  endclass.
+
+ class cl_hema_meth implementation.
+   method im_1.
+     write:/ 'this is local class method implementation'.
+     var_3 = var_1 + var_2.
+     write var_3.
+    endmethod.
+    method cm_1.
+      write 'this is local class static method implementation'.
+     endmethod.
+   endclass.
+
+ start-of-selection.
+ data i_obj type ref to cl_hema_meth.
+ create object i_obj.
+
+ i_obj->im_1( ).
+ skip 3.
+ cl_hema_meth=>cm_1( ).
+
+
+**************************#7***********************
+
+REPORT ZHEMA_GLO_CLS.
+*data i_obj type ref to zcl_hema_gclass.
+*create object i_obj.
+*start-of-selection.
+*write: i_obj->i_a,
+*zcl_hema_gclass=>i_b.
+
+class cl_hema definition.
+  public section.
+  data i1 type i value 200.
+  class-data s2 type i value 400.
+endclass.
+data i_obj type ref to cl_hema.
+create object i_obj.
+start-of-selection.
+write :/ i_obj->i1,
+ cl_hema=>s2.
+
+
+*****************************#8**************************
+
+
+REPORT ZHEMA_interactive_REP no standard page heading line-count 20(3)
+line-size 300 message-id zhema_msgs.
+
+load-of-program.
+INCLUDE ZHEMA_INTER_INC.
+
+select-options s_ebeln for wa_tab-ebeln obligatory.
+initialization.
+clear: wa_tab, lt_tab.
+s_ebeln-low = '1'.
+s_ebeln-high = '500000000000'.
+append s_ebeln.
+
+at selection-screen on s_ebeln.
+  select single ebeln
+    into  lv_ebeln
+    from ekko
+    where ebeln in s_ebeln.
+if sy-subrc eq 0.
+  message s000.
+else .
+  message e001.
+endif.
+
+start-of-selection.
+  perform get_ekko_data.
+end-of-selection.
+
+perform display_ekko_data.
+
+data lv_count type I.
+lv_count = sy-linct - sy-linno.
+skip lv_count.
+
+top-of-page.
+uline.
+write: / 'purchasing document number' ,
+
+40   'company code',
+55  'category',
+70 'pd type',
+50  'statu'.
+at line-selection.
+  case sy-lsind.
+    when 1.
+      select ebeln loekz statu into table lt_tab2 from ekpo  ""here take records from second table
+        where ebeln eq wa_tab-ebeln.  ""here compare with eq not in. because we need user selected record only.
+        loop at lt_tab2 into wa_tab2.
+          write:/ wa_tab2-ebeln hotspot,
+         40 wa_tab2-loekz,
+          50 wa_tab2-statu.
+          hide wa_tab2-ebeln.
+          endloop.
+     when 2.
+      select ebeln aedat kflag into table lt_tab3 from ekkn  "''here take records from 3rd table
+        where ebeln eq wa_tab2-ebeln.   """here compare with eq not in. because we need user selected record only.
+        loop at lt_tab3 into wa_tab3.
+          write:/ wa_tab3-ebeln hotspot,
+          40 wa_tab3-aedat,
+          55 wa_tab3-kflag.
+
+          endloop.
+ endcase.
+
+uline.
+end-of-page.
+write: /'current page number' , sy-pagno,
+'date', sy-datum,
+'time',sy-uzeit.
+top-of-page during line-selection.
+case sy-lsind.
+  when 1.
+write: / 'ebeln' hotspot,  ""write column headings for second table op.
+40 'loekz',
+55 'statu'.
+uline.
+when 2.
+  write:/ 'ebeln',        """"write column headings for third table op.
+  40 'aedat',
+  55 'kflag'.
+  uline.
+endcase.
+
+
+
+
+
+
+*&---------------------------------------------------------------------*
+*& Form get_ekko_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+
+
+FORM get_ekko_data .
+select ebeln  bukrs BSTYP bsart  into table lt_tab from ekko
+  where ebeln in s_ebeln.
+  if sy-subrc eq 0.
+    write: 'records are found'.
+  else.
+    write: 'records are not found'.
+  endif.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_ekko_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_ekko_data .
+loop at lt_tab into wa_tab.
+  write: / wa_tab-ebeln hotspot,
+
+  40 wa_tab-bukrs,
+  55 wa_tab-ebstyp,
+  70 wa_tab-esart.
+  hide wa_tab-ebeln.
+  endloop.
+
+*  loop at lt_tab2 into wa_tab2.
+*  write: / wa_tab2-loekz,
+*  40 wa_tab2-statu.
+*  endloop.
+*
+*  loop at lt_tab3 into wa_tab3.
+*  write: / wa_tab3-aedat,
+*  40 wa_tab3-kflag.
+*  endloop.
+ENDFORM.
+***include***
+types : begin of ls_tab,
+   ebeln type EBELN,
+bukrs type BUKRS,
+EBSTYP type EBSTYP,
+ESART type esart ,
+  end of ls_tab.
+data: lt_tab type standard table of ls_tab,
+      wa_tab type ls_tab.
+data lv_ebeln type ebeln.
+
+*******ekpo*****
+types: begin of ls_tab2,
+  ebeln type ebeln,
+  loekz type eloek,
+  statu type astat,
+  end of ls_tab2.
+data : lt_tab2 type standard table of ls_tab2,
+      wa_tab2 type ls_tab2.
+
+*******ekkn******
+types : begin of ls_tab3,
+  ebeln type ebeln,
+  aedat type erdat,
+  kflag type eflag,
+  end of ls_tab3.
+data: lt_tab3 type standard table of ls_tab3,
+      wa_tab3 type ls_tab3.
+
+
+***********************#9***********************
+
+REPORT ZHEMA_LOCKOBJ.
+parameters p_matnr type matnr.
+CALL FUNCTION 'ENQUEUE_EZ_HEMA'
+ EXPORTING
+   MODE_MARA            = 'E'
+   MANDT                = SY-MANDT
+   MATNR                = p_matnr
+*   X_MATNR              = ' '
+*   _SCOPE               = '2'
+*   _WAIT                = ' '
+*   _COLLECT             = ' '
+* EXCEPTIONS
+*   FOREIGN_LOCK         = 1
+*   SYSTEM_FAILURE       = 2
+*   OTHERS               = 3
+.
+IF sy-subrc <> 0.
+* Implement suitable error handling here
+ENDIF.
+break-point.
+
+CALL FUNCTION 'DEQUEUE_EZ_HEMA'
+ EXPORTING
+   MODE_MARA       = 'E'
+   MANDT           = SY-MANDT
+   MATNR           = p_matnr
+*   X_MATNR         = ' '
+*   _SCOPE          = '3'
+*   _SYNCHRON       = ' '
+*   _COLLECT        = ' '
+          .
+
+
+********************************#10******************************
+
+REPORT ZREPORT_ASSIGN no standard page heading line-count 20(5) line-size
+300 message-id zhema_msgs.
+load-of-program.
+include zhema_classic_rep1.
+select-options s_ebeln for lv_ebeln obligatory.
+initialization.
+clear: wa_tab, lt_tab.
+s_ebeln-low = '1'.
+s_ebeln-high = '100'.
+append s_ebeln.
+at selection-screen on s_ebeln.
+  select EKKO~ebeln into table lt_tab from ekKo inner join ekPo
+    on
+    ekko~ebeln = ekpo~ebeln
+ where ekko~ebeln in s_ebeln.
+if sy-subrc eq 0.
+  message s000.
+else .
+  message e001.
+endif.
+start-of-selection .
+perform get_data.
+end-of-selection.
+perform display_data.
+data lv_count type I.
+lv_count = sy-linct - sy-linno.
+skip lv_count.
+
+top-of-page.
+uline.
+write: /
+'loekz',
+30 'statu',
+40 'purchasing document number' ,
+
+60  'company code',
+50  'category',
+60 'pd type'.
+
+uline.
+end-of-page.
+write: /'current page number' , sy-pagno,
+'date', sy-datum,
+'time',sy-uzeit.
+*&---------------------------------------------------------------------*
+*& Form get_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_data .
+select  ekpo~loekz ekpo~statu
+  ekko~ebeln  ekko~bukrs ekko~BSTYP ekko~bsart  into table lt_tab from ekko inner join ekpo on
+  ekko~ebeln = ekpo~ebeln
+  where ekko~ebeln in s_ebeln.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form display_data
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM display_data .
+  format color 1.
+loop at lt_tab into wa_tab.
+  write:/  WA_TAB-loekz color 4, sy-vline,
+  30 wa_tab-statu,
+  60 wa_tab-ebeln,
+  50 wa_tab-bukrs,
+  60 wa_tab-Ebstyp,
+  70 wa_tab-Esart.
+ENDLOOP.
+ENDFORM.
+
+********include******
+types: begin of ls_tab,
+ loekz type ekpo-loekz,
+  statu type ekpo-statu,
+ ebeln type ekko-Ebeln,
+ bukrs type ekko-BUKRS,
+ EBSTYP type ekko-BSTYP,
+ ESART type ekko-bsart,
+  end of ls_tab.
+data: lt_tab type standard table of ls_tab,
+      wa_tab type ls_tab.
+data lv_ebeln type ekko-ebeln.
+
+*******************#11********************************************
+
+REPORT ZSELECT_STMTS.
+*TABLES kna1.
+*
+*DATA: lv_kunnr TYPE kunnr,
+*      lv_name1 TYPE NAME1_GP,
+*      lv_ort01 TYPE ORT01_GP,
+*      lv_land1 TYPE LAND1_GP.
+*
+*
+*select-OPTIONS s_kunnr for lv_kunnr.
+*PARAMETERS p_land1 TYPE kna1-land1.
+
+TABLES kna1.
+**
+TYPES : BEGIN OF LS_TAB,
+      KUNNR TYPE KUNNR ,
+      NAME1 TYPE NAME1_GP ,
+      ORT01 TYPE ORT01_GP,
+      LAND1 TYPE LAND1_GP,
+      END OF LS_TAB.
+
+DATA : LT_tAB TYPE STANDARD TABLE OF LS_TAB,
+       WA_TAB TYPE LS_tAB.
+
+data lv_kunnr TYPE kunnr.
+select-OPTIONS s_kunnr for lv_kunnr.
+PARAMETERS p_land1 TYPE kna1-land1.
+
+SELECT  KUNNR NAME1 ORT01 LAND1
+
+  INTO TABLE LT_tAB
+       FROM kna1
+        wHERE kunnr in s_kunnr and
+              land1 eq p_land1.
+
+* APPEND WA_tab to lt_tab.
+* ENDSELECT.
+
+loop at lt_Tab INTO WA_Tab.
+
+ WRITE: / WA_tab-kunnr,
+          WA_tab-name1,
+          WA_tab-ort01,
+          WA_tab-land1.
+
+  ENDLOOP.
+
+
+*******************************#12*************************************
+
+REPORT zsel_al_op.
+INCLUDE zhema_selInc.
+format color off.
+SELECT-OPTIONS s_vbeln FOR LV_vbeln DEFAULT '1' TO '100'.
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-t01.
+  PARAMETERS : rad1 RADIOBUTTON GROUP rad USER-COMMAND flag DEFAULT 'X',
+               rad2 RADIOBUTTON GROUP rad.
+SELECTION-SCREEN END OF BLOCK b1.
+SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE TEXT-t02.
+  PARAMETERS : p_auart TYPE auart MODIF ID m1,
+               p_waerk TYPE waerk MODIF ID m2.
+  PARAMETERS: c1 AS CHECKBOX DEFAULT 'X',
+              c2 AS CHECKBOX.
+SELECTION-SCREEN END OF BLOCK b2.
+
+AT SELECTION-SCREEN OUTPUT.
+  LOOP AT SCREEN.
+    IF rad1 = 'X' AND
+      screen-group1 = 'M2'.
+      screen-active = 0.
+    ELSEIF rad2 = 'X' AND
+      screen-group1 = 'M1'.
+      screen-active = 0.
+    ENDIF.
+    MODIFY SCREEN.
+  ENDLOOP.
+
+START-OF-SELECTION.
+  IF rad1 = 'X'.
+    PERFORM get_data_auart.
+  ELSE.
+    PERFORM get_data_waerk.
+  ENDIF.
+*&---------------------------------------------------------------------*
+*& Form GET_DATA_AUART
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_data_auart .
+  SELECT vbeln erdat auart waerk INTO TABLE lt_tab FROM vbak
+  WHERE vbeln IN s_vbeln AND auart EQ p_auart.
+  SORT lt_tab BY vbeln.
+  LOOP AT lt_tab INTO wa_tab.
+    WRITE:/ wa_tab-vbeln color 1,
+    wa_tab-erdat color 2,
+    wa_tab-auart color 3,
+    wa_tab-waerk color 4.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form GET_DATA_WAERK
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_data_waerk .
+  SELECT vbeln  erdat auart waerk INTO TABLE lt_tab FROM vbak
+  WHERE vbeln IN s_vbeln AND waerk EQ p_waerk.
+  SORT lt_tab BY vbeln.
+  LOOP AT lt_tab INTO wa_tab.
+    WRITE:/ wa_tab-vbeln,
+    wa_tab-erdat,
+    wa_tab-auart,
+    wa_tab-waerk.
+  ENDLOOP.
+ENDFORM.
+*****include******
+TYPES: BEGIN OF LS_TAB,
+  VBELN TYPE VBELN_VA,
+  ERDAT TYPE ERDAT,
+  AUART TYPE AUART,
+  WAERK TYPE WAERK,
+  END OF LS_TAB.
+DATA: LT_TAB TYPE STANDARD TABLE OF LS_TAB,
+      WA_TAB TYPE LS_TAB,
+      LV_VBELN TYPE VBELN.
+types: begin of ls_tab2,
+  vbeln type vbeln_va,
+  posnr type posnr_va,
+  matwa type matwa,
+  end of ls_tab2.
+data: lt_tab2 type standard table of ls_tab2,
+      wa_tab2 type ls_tab.
+
+
+*********************************#13**************************
+
+REPORT ZSEL_al_op2.
+INCLUDE zhema_selInc.
+SELECT-OPTIONS s_vbeln FOR LV_vbeln DEFAULT '1' TO '100'.
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-t01.
+  PARAMETERS : rad1 RADIOBUTTON GROUP rad USER-COMMAND flag DEFAULT 'X',
+               rad2 RADIOBUTTON GROUP rad.
+SELECTION-SCREEN END OF BLOCK b1.
+SELECTION-SCREEN BEGIN OF BLOCK b2 WITH FRAME TITLE TEXT-t02.
+  PARAMETERS : p_auart TYPE auart MODIF ID m1,
+               p_waerk TYPE waerk MODIF ID m2.
+  PARAMETERS: c1 AS CHECKBOX DEFAULT 'X',
+              c2 AS CHECKBOX.
+SELECTION-SCREEN END OF BLOCK b2.
+
+AT SELECTION-SCREEN OUTPUT.
+  LOOP AT SCREEN.
+    IF rad1 = 'X' AND
+      screen-group1 = 'M2'.
+      screen-active = 0.
+    ELSEIF rad2 = 'X' AND
+      screen-group1 = 'M1'.
+      screen-active = 0.
+    ENDIF.
+    MODIFY SCREEN.
+  ENDLOOP.
+
+START-OF-SELECTION.
+  IF rad1 = 'X'.
+    PERFORM get_data_auart.
+  ELSE.
+    PERFORM get_data_waerk.
+  ENDIF.
+*&---------------------------------------------------------------------*
+*& Form GET_DATA_AUART
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_data_auart .
+  SELECT vbeln erdat auart waerk INTO TABLE lt_tab FROM vbak
+  WHERE vbeln IN s_vbeln AND auart EQ p_auart.
+  SORT lt_tab BY vbeln.
+  LOOP AT lt_tab INTO wa_tab.
+    WRITE:/ wa_tab-vbeln,
+    wa_tab-erdat,
+    wa_tab-auart,
+    wa_tab-waerk.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form GET_DATA_WAERK
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_data_waerk .
+  SELECT vbeln  erdat auart waerk INTO TABLE lt_tab FROM vbak
+  WHERE vbeln IN s_vbeln AND waerk EQ p_waerk.
+  SORT lt_tab BY vbeln.
+  LOOP AT lt_tab INTO wa_tab.
+    WRITE:/ wa_tab-vbeln,
+    wa_tab-erdat,
+    wa_tab-auart,
+    wa_tab-waerk.
+  ENDLOOP.
+ENDFORM.
+
+**include
+TYPES: BEGIN OF LS_TAB,
+  VBELN TYPE VBELN_VA,
+  ERDAT TYPE ERDAT,
+  AUART TYPE AUART,
+  WAERK TYPE WAERK,
+  END OF LS_TAB.
+DATA: LT_TAB TYPE STANDARD TABLE OF LS_TAB,
+      WA_TAB TYPE LS_TAB,
+      LV_VBELN TYPE VBELN.
+types: begin of ls_tab2,
+  vbeln type vbeln_va,
+  posnr type posnr_va,
+  matwa type matwa,
+  end of ls_tab2.
+data: lt_tab2 type standard table of ls_tab2,
+      wa_tab2 type ls_tab.
+
+
+*********************************#14******************
+
+REPORT Z_ALV_FIELDCAT_MERGE no standard page heading line-count 20(3)
+LINE-SIZE 300 MESSAGE-ID zhema_msgs.
+
+LOAD-OF-PROGRAM.
+  INCLUDE zalv_list_top_inc.
+  SELECT-OPTIONS s_ebeln FOR lv_ebeln OBLIGATORY.
+
+INITIALIZATION.
+  CLEAR: wa_fieldcat, lt_tab,lt_fieldcat.
+  s_ebeln-low = '1'.
+  s_ebeln-high = '50000000'.
+  APPEND s_ebeln.
+
+AT SELECTION-SCREEN ON s_ebeln.
+  SELECT SINGLE ebeln INTO lv_ebeln FROM ekko
+  WHERE ebeln IN s_ebeln.
+  IF sy-subrc EQ 0.
+    MESSAGE s001.
+  ELSE.
+    MESSAGE e002.
+  ENDIF.
+
+START-OF-SELECTION.
+
+  PERFORM get_alv_data.
+  PERFORM get_ekko_data.
+
+END-OF-SELECTION.
+
+
+  PERFORM disp_alv_data.
+
+
+FORM get_ekko_data.
+  SELECT *
+    INTO TABLE lt_tab FROM ekko INNER JOIN EKPO ON
+    ekko~ebeln = ekpo~ebeln
+    WHERE EKKO~ebeln IN s_ebeln.
+  IF sy-subrc EQ 0.
+    MESSAGE s001.
+  ELSE.
+    MESSAGE e002.
+  ENDIF.
+ENDFORM.
+
+
+FORM get_alv_data.
+
+
+  CALL FUNCTION 'REUSE_ALV_FIELDCATALOG_MERGE'
+   EXPORTING
+    I_PROGRAM_NAME               =  sy-repid
+     I_INTERNAL_TABNAME           = 'lt_ab'
+     I_STRUCTURE_NAME             =  'ekko'
+*     I_CLIENT_NEVER_DISPLAY       = 'X'
+*     I_INCLNAME                   =
+*     I_BYPASSING_BUFFER           =
+*     I_BUFFER_ACTIVE              =
+    CHANGING
+      ct_fieldcat                  = lt_fieldcat
+*   EXCEPTIONS
+*     INCONSISTENT_INTERFACE       = 1
+*     PROGRAM_ERROR                = 2
+*     OTHERS                       = 3
+            .
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+
+ENDFORM.
+FORM DISP_ALV_dATA.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+*     I_INTERFACE_CHECK  = ' '
+*     I_BYPASSING_BUFFER =
+*     I_BUFFER_ACTIVE    = ' '
+      i_callback_program = sy-repid
+*     I_CALLBACK_PF_STATUS_SET       = ' '
+*     I_CALLBACK_USER_COMMAND        = ' '
+*     I_STRUCTURE_NAME   =
+*     IS_LAYOUT          =
+      it_fieldcat        = lt_fieldcat
+*     IT_EXCLUDING       =
+*     IT_SPECIAL_GROUPS  =
+*     IT_SORT            =
+*     IT_FILTER          =
+*     IS_SEL_HIDE        =
+*     I_DEFAULT          = 'X'
+*     I_SAVE             = ' '
+*     IS_VARIANT         =
+*     IT_EVENTS          =
+*     IT_EVENT_EXIT      =
+*     IS_PRINT           =
+*     IS_REPREP_ID       =
+*     I_SCREEN_START_COLUMN          = 0
+*     I_SCREEN_START_LINE            = 0
+*     I_SCREEN_END_COLUMN            = 0
+*     I_SCREEN_END_LINE  = 0
+*     IR_SALV_LIST_ADAPTER           =
+*     IT_EXCEPT_QINFO    =
+*     I_SUPPRESS_EMPTY_DATA          = ABAP_FALSE
+*     IO_SALV_ADAPTER    =
+*     O_COMMON_HUB       =
+*   IMPORTING
+*     E_EXIT_CAUSED_BY_CALLER        =
+*     ES_EXIT_CAUSED_BY_USER         =
+    TABLES
+      t_outtab           = lt_tab
+*   EXCEPTIONS
+*     PROGRAM_ERROR      = 1
+*     OTHERS             = 2
+    .
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+ENDFORM.
+
+*****include
+TYPES : BEGIN OF ls_tab, "" EKKO
+          ebeln  TYPE ebeln,
+          bukrs  TYPE bukrs,
+          Ebstyp TYPE ebstyp,
+          esart  TYPE esart,
+
+
+        END OF ls_tab.
+DATA: lt_tab      TYPE TABLE OF ls_tab,
+      wa_tab      TYPE ls_tab,
+      lv_ebeln    TYPE ebeln,
+      wa_fieldcat TYPE slis_fieldcat_alv,
+      lt_fieldcat TYPE slis_t_fieldcat_alv.
+
+**********************************#15**************************
+
+REPORT Z_ALV_GETCUR.
+data lv_ebeln type ebeln.
+types: begin of ty_ekko,
+  ebeln type ebeln,
+  bukrs type bukrs,
+  bstyp type ebstyp,
+  end of ty_ekko.
+data: it_ekko type table of ty_ekko,
+      wa_ekko type ty_ekko.
+select-options s_ebeln for lv_ebeln.
+start-of-selection.
+select ebeln bukrs bstyp into table IT_ekko from ekko
+  where ebeln in s_ebeln.
+end-of-selection.
+loop at it_ekko into wa_ekko.
+  format hotspot on.
+  write:/ wa_ekko-ebeln,
+ 50  wa_ekko-bukrs.
+  format hotspot off.
+  write  60 wa_ekko-bstyp.
+  endloop.
+  top-of-page.
+  write:/ 'purchasing document number',
+  'company code',
+  'purchasing doc category'.
+
+  at line-selection.
+    data: fname(15),
+          fval(15).
+  get cursor field fname value fval.
+  if fname = 'WA_EKKO-EBELN'.
+    set parameter id 'BES' FIELD FVAL.
+    CALL TRANSACTION 'ME23N' AND SKIP FIRST SCREEN.
+  ELSEIF FNAME = 'WA_EKKO-BUKRS'.
+    set parameter id 'BUK' field fval.
+    call transaction 'ME22N' AND SKIP FIRST SCREEN.
+  ENDIF.
+
+
+
+**************************#16*****************
+
+REPORT z_alv_grid NO STANDARD PAGE HEADING LINE-COUNT 20(3)
+LINE-SIZE 300 MESSAGE-ID zhema_msgs.
+
+LOAD-OF-PROGRAM.
+  INCLUDE zalv_list_top_inc.
+  SELECT-OPTIONS s_ebeln FOR lv_ebeln OBLIGATORY.
+
+INITIALIZATION.
+  CLEAR: wa_fieldcat, lt_tab,lt_fieldcat.
+  s_ebeln-low = '1'.
+  s_ebeln-high = '50000000'.
+  APPEND s_ebeln.
+
+AT SELECTION-SCREEN ON s_ebeln.
+  SELECT SINGLE ebeln INTO lv_ebeln FROM ekko
+  WHERE ebeln IN s_ebeln.
+  IF sy-subrc EQ 0.
+    MESSAGE s001.
+  ELSE.
+    MESSAGE e002.
+  ENDIF.
+
+START-OF-SELECTION.
+
+  PERFORM get_alv_data.
+  PERFORM get_ekko_data.
+
+END-OF-SELECTION.
+
+
+  PERFORM disp_alv_data.
+
+
+FORM get_ekko_data.
+  SELECT ekko~ebeln ekko~bukrs ekko~bstyp ekko~Bsart ekpo~EBELP ekpo~STATU ekpo~LOEKZ
+    INTO TABLE lt_tab FROM ekko INNER JOIN EKPO ON
+    ekko~ebeln = ekpo~ebeln
+    WHERE EKKO~ebeln IN s_ebeln.
+  IF sy-subrc EQ 0.
+    MESSAGE s001.
+  ELSE.
+    MESSAGE e002.
+  ENDIF.
+ENDFORM.
+
+
+FORM get_alv_data.
+  wa_fieldcat-col_pos = '1'.
+  wa_fieldcat-seltext_l = 'EBELN'.
+  wa_fieldcat-fieldname = 'EBELN'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-col_pos = '2'.
+  wa_fieldcat-seltext_l = 'BSTYP'.
+  wa_fieldcat-fieldname = 'EBSTYP'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-col_pos = '3'.
+  wa_fieldcat-seltext_l = 'BUKRS'.
+  wa_fieldcat-fieldname = 'BUKRS'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+
+  wa_fieldcat-col_pos = '4'.
+  wa_fieldcat-seltext_l = 'ESART'.
+  wa_fieldcat-fieldname = 'ESART'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+
+   wa_fieldcat-col_pos = '5'.
+  wa_fieldcat-seltext_l = 'LOEKZ'.
+  wa_fieldcat-fieldname = 'LOEKZ'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+
+   wa_fieldcat-col_pos = '6'.
+  wa_fieldcat-seltext_l = 'EBELP'.
+  wa_fieldcat-fieldname = 'EBELP'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+   wa_fieldcat-col_pos = '7'.
+  wa_fieldcat-seltext_l = 'STATU'.
+  wa_fieldcat-fieldname = 'STATU'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+ENDFORM.
+FORM DISP_ALV_dATA.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+*     I_INTERFACE_CHECK  = ' '
+*     I_BYPASSING_BUFFER =
+*     I_BUFFER_ACTIVE    = ' '
+      i_callback_program = sy-repid
+*     I_CALLBACK_PF_STATUS_SET       = ' '
+*     I_CALLBACK_USER_COMMAND        = ' '
+*     I_STRUCTURE_NAME   =
+*     IS_LAYOUT          =
+      it_fieldcat        = lt_fieldcat
+*     IT_EXCLUDING       =
+*     IT_SPECIAL_GROUPS  =
+*     IT_SORT            =
+*     IT_FILTER          =
+*     IS_SEL_HIDE        =
+*     I_DEFAULT          = 'X'
+*     I_SAVE             = ' '
+*     IS_VARIANT         =
+*     IT_EVENTS          =
+*     IT_EVENT_EXIT      =
+*     IS_PRINT           =
+*     IS_REPREP_ID       =
+*     I_SCREEN_START_COLUMN          = 0
+*     I_SCREEN_START_LINE            = 0
+*     I_SCREEN_END_COLUMN            = 0
+*     I_SCREEN_END_LINE  = 0
+*     IR_SALV_LIST_ADAPTER           =
+*     IT_EXCEPT_QINFO    =
+*     I_SUPPRESS_EMPTY_DATA          = ABAP_FALSE
+*     IO_SALV_ADAPTER    =
+*     O_COMMON_HUB       =
+*   IMPORTING
+*     E_EXIT_CAUSED_BY_CALLER        =
+*     ES_EXIT_CAUSED_BY_USER         =
+    TABLES
+      t_outtab           = lt_tab
+*   EXCEPTIONS
+*     PROGRAM_ERROR      = 1
+*     OTHERS             = 2
+    .
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+ENDFORM.
+
+
+********************************#17***********************
+
+REPORT Z_ALV_HIERSTR.
+TYPES: BEGIN OF TY_EKKO,
+  UST(1),
+  EBELN TYPE EBELN,
+  BUKRS TYPE BUKRS,
+  BSART TYPE ESART,
+  END OF TY_EKKO.
+DATA: IT_EKKO TYPE TABLE OF TY_EKKO,
+      WA_EKKO TYPE TY_EKKO.
+
+TYPES: BEGIN OF TY_EKPO,
+  EBELN TYPE EBELN,
+  EBELP TYPE EBELP,
+  STATU TYPE ESTAT,
+  END OF TY_EKPO.
+ DATA: IT_EKPO TYPE TABLE OF TY_EKPO,
+       WA_EKPO TYPE TY_EKPO,
+
+
+ t_fcat TYPE slis_t_fieldcat_alv, "field catalog
+  w_fcat LIKE LINE OF t_fcat,
+  IT_KEY TYPE SLIS_KEYINFO_ALV,
+  LAYOUT TYPE SLIS_LAYOUT_ALV.
+
+ TABLES EKKO.
+ SELECT-OPTIONS S_EBELN FOR EKKO-EBELN.
+ START-OF-SELECTION.
+ PERFORM GET_HDATA.
+ PERFORM GET_FCDATA.
+ END-OF-SELECTION.
+ PERFORM DISP_HDATA.
+
+ FORM GET_HDATA.
+   SELECT EBELN BUKRS BSART FROM EKKO INTO CORRESPONDING FIELDS OF TABLE IT_EKKO
+     WHERE EBELN IN S_EBELN.
+
+     SELECT EBELN EBELP STATU FROM EKPO INTO TABLE IT_EKPO
+       WHERE EBELN IN S_EBELN.
+ENDFORM.
+
+FORM GET_FCDATA.
+  w_fcat-col_pos       = '1'. "coloum position
+  w_fcat-fieldname     = 'EBELN'. "column name
+  w_fcat-tabname       = 'IT_EKKO'. "table
+  w_fcat-ref_tabname   = 'EKKO'. "table
+  w_fcat-ref_fieldname = 'EBELN'. "reference field, it will show descriptions automatically
+  APPEND w_fcat TO t_fcat.
+  CLEAR w_fcat.
+
+   w_fcat-col_pos       = '2'. "coloum position
+  w_fcat-fieldname     = 'BUKRS'. "column name
+  w_fcat-tabname       = 'IT_EKKO'. "table
+  w_fcat-ref_tabname   = 'EKKO'. "table
+  w_fcat-ref_fieldname = 'BUKRS'. "reference field, it will show descriptions automatically
+  APPEND w_fcat TO t_fcat.
+  CLEAR w_fcat.
+
+   w_fcat-col_pos       = '3'. "coloum position
+  w_fcat-fieldname     = 'STATU'. "column name
+  w_fcat-tabname       = 'IT_EKKO'. "table
+  w_fcat-ref_tabname   = 'EKKO'. "table
+  w_fcat-ref_fieldname = 'STATU'. "reference field, it will show descriptions automatically
+  APPEND w_fcat TO t_fcat.
+  CLEAR w_fcat.
+
+   w_fcat-col_pos       = '1'. "coloum position
+  w_fcat-fieldname     = 'EBELN'. "column name
+  w_fcat-tabname       = 'IT_EKPO'. "table
+  w_fcat-ref_tabname   = 'EKPO'. "table
+  w_fcat-ref_fieldname = 'EBELN'. "reference field, it will show descriptions automatically
+  APPEND w_fcat TO t_fcat.
+  CLEAR w_fcat.
+
+   w_fcat-col_pos       = '2'. "coloum position
+  w_fcat-fieldname     = 'EBELP'. "column name
+  w_fcat-tabname       = 'IT_EKPO'. "table
+  w_fcat-ref_tabname   = 'EKPO'. "table
+  w_fcat-ref_fieldname = 'EBELP'. "reference field, it will show descriptions automatically
+  APPEND w_fcat TO t_fcat.
+  CLEAR w_fcat.
+
+   w_fcat-col_pos       = '3'. "coloum position
+  w_fcat-fieldname     = 'STATU'. "column name
+  w_fcat-tabname       = 'IT_EKPO'. "table
+  w_fcat-ref_tabname   = 'EKPO'. "table
+  w_fcat-ref_fieldname = 'STATU'. "reference field, it will show descriptions automatically
+  APPEND w_fcat TO t_fcat.
+  CLEAR w_fcat.
+ ENDFORM.
+
+ FORM DISP_HDATA.
+   IT_KEY-HEADER01 = 'EKKO'.
+   LAYOUT-EXPAND_FIELDNAME = 'UST'.
+
+   IF SY-SUBRC EQ 0.
+     CALL FUNCTION 'REUSE_ALV_HIERSEQ_LIST_DISPLAY'
+       EXPORTING
+*        I_INTERFACE_CHECK              = ' '
+        I_CALLBACK_PROGRAM             = SY-REPID
+*        I_CALLBACK_PF_STATUS_SET       = ' '
+*        I_CALLBACK_USER_COMMAND        = ' '
+        IS_LAYOUT                      = LAYOUT
+      IT_FIELDCAT                    = T_FCAT[]
+*        IT_EXCLUDING                   =
+*        IT_SPECIAL_GROUPS              =
+*        IT_SORT                        =
+*        IT_FILTER                      =
+*        IS_SEL_HIDE                    =
+*        I_SCREEN_START_COLUMN          = 0
+*        I_SCREEN_START_LINE            = 0
+*        I_SCREEN_END_COLUMN            = 0
+*        I_SCREEN_END_LINE              = 0
+*        I_DEFAULT                      = 'X'
+*        I_SAVE                         = ' '
+*        IS_VARIANT                     =
+*        IT_EVENTS                      =
+*        IT_EVENT_EXIT                  =
+         i_tabname_header               = 'IT_EKKO'
+         i_tabname_item                 = 'IT_EKPO'
+*        I_STRUCTURE_NAME_HEADER        =
+*        I_STRUCTURE_NAME_ITEM          =
+         is_keyinfo                     = IT_KEY
+*        IS_PRINT                       =
+*        IS_REPREP_ID                   =
+*        IS_HIERSEQ_SETTINGS            =
+*        I_BYPASSING_BUFFER             =
+*        I_BUFFER_ACTIVE                =
+*        IR_SALV_HIERSEQ_ADAPTER        =
+*        IT_EXCEPT_QINFO                =
+*        I_SUPPRESS_EMPTY_DATA          = ABAP_FALSE
+*        I_LIST_DISPLAY_ONLY            = ABAP_FALSE
+*        O_COMMON_HUB                   =
+*      IMPORTING
+*        E_EXIT_CAUSED_BY_CALLER        =
+*        ES_EXIT_CAUSED_BY_USER         =
+       TABLES
+         t_outtab_header                = IT_EKKO
+         t_outtab_item                  = IT_EKPO
+      EXCEPTIONS
+        PROGRAM_ERROR                  = 1
+        OTHERS                         = 2
+               .
+     IF sy-subrc <> 0.
+* Implement suitable error handling here
+     ENDIF.
+     ENDIF.
+     ENDFORM.
+
+
+********************************************#18*******************************
+
+REPORT z_alv_list NO STANDARD PAGE HEADING LINE-COUNT 20(3)
+LINE-SIZE 300 MESSAGE-ID zhema_msgs.
+
+LOAD-OF-PROGRAM.
+  INCLUDE zalv_list_top_inc.
+  SELECT-OPTIONS s_ebeln FOR lv_ebeln OBLIGATORY.
+
+INITIALIZATION.
+  CLEAR: wa_fieldcat, lt_tab,lt_fieldcat.
+  s_ebeln-low = '1'.
+  s_ebeln-high = '50000000'.
+  APPEND s_ebeln.
+
+AT SELECTION-SCREEN ON s_ebeln.
+  SELECT SINGLE ebeln INTO lv_ebeln FROM ekko
+  WHERE ebeln IN s_ebeln.
+  IF sy-subrc EQ 0.
+    MESSAGE s001.
+  ELSE.
+    MESSAGE e002.
+ ENDIF.
+
+START-OF-SELECTION.
+
+  PERFORM get_alv_data.
+  PERFORM GET_EKKO_DATA.
+
+END-OF-SELECTION.
+
+
+  PERFORM disp_alv_data.
+
+
+FORM get_ekko_data.
+  SELECT ebeln bukrs bstyp Bsart INTO TABLE lt_tab FROM ekko
+    WHERE ebeln IN s_ebeln.
+    IF sy-subrc EQ 0.
+      MESSAGE s001.
+    ELSE.
+      MESSAGE e002.
+    ENDIF.
+ENDFORM.
+
+
+FORM get_alv_data.
+  wa_fieldcat-col_pos = '1'.
+  wa_fieldcat-seltext_l = 'EBELN'.
+  wa_fieldcat-fieldname = 'EBELN'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-col_pos = '2'.
+  wa_fieldcat-seltext_l = 'BSTYP'.
+  wa_fieldcat-fieldname = 'EBSTYP'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-col_pos = '3'.
+  wa_fieldcat-seltext_l = 'BUKRS'.
+  wa_fieldcat-fieldname = 'BUKRS'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+
+  wa_fieldcat-col_pos = '4'.
+  wa_fieldcat-seltext_l = 'ESART'.
+  wa_fieldcat-fieldname = 'ESART'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+ENDFORM.
+FORM DISP_ALV_dATA.
+  CALL FUNCTION 'REUSE_ALV_LIST_DISPLAY'
+   EXPORTING
+*     I_INTERFACE_CHECK              = ' '
+*     I_BYPASSING_BUFFER             =
+*     I_BUFFER_ACTIVE                = ' '
+     I_CALLBACK_PROGRAM             = SY-REPID
+*     I_CALLBACK_PF_STATUS_SET       = ' '
+*     I_CALLBACK_USER_COMMAND        = ' '
+*     I_STRUCTURE_NAME               =
+*     IS_LAYOUT                      =
+    IT_FIELDCAT                    = LT_FIELDCAT
+*     IT_EXCLUDING                   =
+*     IT_SPECIAL_GROUPS              =
+*     IT_SORT                        =
+*     IT_FILTER                      =
+*     IS_SEL_HIDE                    =
+*     I_DEFAULT                      = 'X'
+*     I_SAVE                         = ' '
+*     IS_VARIANT                     =
+*     IT_EVENTS                      =
+*     IT_EVENT_EXIT                  =
+*     IS_PRINT                       =
+*     IS_REPREP_ID                   =
+*     I_SCREEN_START_COLUMN          = 0
+*     I_SCREEN_START_LINE            = 0
+*     I_SCREEN_END_COLUMN            = 0
+*     I_SCREEN_END_LINE              = 0
+*     IR_SALV_LIST_ADAPTER           =
+*     IT_EXCEPT_QINFO                =
+*     I_SUPPRESS_EMPTY_DATA          = ABAP_FALSE
+*     IO_SALV_ADAPTER                =
+*     O_COMMON_HUB                   =
+*   IMPORTING
+*     E_EXIT_CAUSED_BY_CALLER        =
+*     ES_EXIT_CAUSED_BY_USER         =
+    TABLES
+      t_outtab                       = LT_TAB
+*   EXCEPTIONS
+*     PROGRAM_ERROR                  = 1
+*     OTHERS                         = 2
+            .
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+ ENDFORM.
+
+
+******************************************#19**************************************
+
+REPORT Z_ALV_LOGO no standard page heading line-count 20(3) line-size 500
+message-id zhema_msgs.
+include zhema_logo_top.
+select-options s_LIFNR for lv_LIFNR obligatory.
+
+initialization.
+clear: lt_tab, wa_fieldcat, lt_fieldcat.
+s_LIFNR-low = '1'.
+s_LIFNR-high = '5000000000'.
+append s_LIFNR.
+
+*at selection-screen on s_ebeln.
+*  select single ebeln into lv_ebeln from ekko
+*    where ebeln in s_ebeln.
+* if sy-subrc eq '0'.
+*   message s001.
+* else.
+*   message e002.
+* endif.
+
+ start-of-selection.
+ perform get_alv_data2.
+ perform get_ekko_Data2.
+ end-of-selection.
+
+ perform disp_alv_data2.
+
+ FORM get_ekko_data2.
+
+  SELECT LIFNR NAME1 LAND1 NAME2
+    INTO TABLE lt_tab FROM LFA1
+    WHERE LIFNR IN s_LIFNR.
+  IF sy-subrc EQ 0.
+    MESSAGE s001.
+  ELSE.
+    MESSAGE e002.
+  ENDIF.
+ ENDFORM.
+
+
+
+FORM get_alv_data2.
+  wa_fieldcat-col_pos = '1'.
+  wa_fieldcat-seltext_l = 'LIFNR'.
+  wa_fieldcat-fieldname = 'LIFNR'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-col_pos = '2'.
+  wa_fieldcat-seltext_l = 'NAME1'.
+  wa_fieldcat-fieldname = 'NAME1'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-col_pos = '3'.
+  wa_fieldcat-seltext_l = 'LAND1'.
+  wa_fieldcat-fieldname = 'LAND1'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+
+  wa_fieldcat-col_pos = '4'.
+  wa_fieldcat-seltext_l = 'NAME2'.
+  wa_fieldcat-fieldname = 'NAME2'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+
+
+
+ENDFORM.
+
+form disp_alv_data2.
+  data: lv_title type lvc_title value 'LFA1 data'.
+        ty_layout-no_colhead = 'X'.
+        ty_layout-no_vline = 'X'.
+if sy-subrc eq 0.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+   EXPORTING
+
+    I_CALLBACK_PROGRAM                = SY-REPID
+
+     I_CALLBACK_TOP_OF_PAGE            = 'UST_LOGO '
+
+    I_GRID_TITLE                      = LV_TITLE
+*     I_GRID_SETTINGS                   =
+*     IS_LAYOUT                         =
+    IT_FIELDCAT                       = LT_FIELDCAT
+*     IT_EXCLUDING                      =
+*     IT_SPECIAL_GROUPS                 =
+*     IT_SORT                           =
+*     IT_FILTER                         =
+*     IS_SEL_HIDE                       =
+*     I_DEFAULT                         = 'X'
+*     I_SAVE                            = ' '
+*     IS_VARIANT                        =
+*     IT_EVENTS                         =
+*     IT_EVENT_EXIT                     =
+*     IS_PRINT                          =
+*     IS_REPREP_ID                      =
+*     I_SCREEN_START_COLUMN             = 0
+*     I_SCREEN_START_LINE               = 0
+*     I_SCREEN_END_COLUMN               = 0
+*     I_SCREEN_END_LINE                 = 0
+*     I_HTML_HEIGHT_TOP                 = 0
+*     I_HTML_HEIGHT_END                 = 0
+*     IT_ALV_GRAPHICS                   =
+*     IT_HYPERLINK                      =
+*     IT_ADD_FIELDCAT                   =
+*     IT_EXCEPT_QINFO                   =
+*     IR_SALV_FULLSCREEN_ADAPTER        =
+*     O_PREVIOUS_SRAL_HANDLER           =
+*     O_COMMON_HUB                      =
+*   IMPORTING
+*     E_EXIT_CAUSED_BY_CALLER           =
+*     ES_EXIT_CAUSED_BY_USER            =
+    TABLES
+      t_outtab                          = LT_TAB
+   EXCEPTIONS
+     PROGRAM_ERROR                     = 1
+     OTHERS                            = 2
+            .
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+  ENDIF.
+  ENDFORM.
+
+  FORM UST_LOGO.
+    data: lt_header type slis_t_listheader,
+          wa_header type slis_listheader.
+    wa_header-typ = 'S'.
+    wa_header-key = 'hyderabad'.
+    wa_header-info = 'UST'.
+    append wa_header to lt_header.
+    CALL FUNCTION 'REUSE_ALV_COMMENTARY_WRITE'
+      EXPORTING
+        it_list_commentary       = LT_HEADER
+      I_LOGO                   = 'ZHEMA_LOGO'.
+*       I_END_OF_LIST_GRID       =
+*       I_ALV_FORM               =
+ENDFORM.
+              .
+
+
+*************************************20*************************
+
+REPORT Z_ALV_POPUP NO STANDARD PAGE HEADING LINE-COUNT 20(3)
+LINE-SIZE 300 MESSAGE-ID zhema_msgs.
+
+LOAD-OF-PROGRAM.
+  INCLUDE zalv_list_top_inc.
+  SELECT-OPTIONS s_ebeln FOR lv_ebeln OBLIGATORY.
+
+INITIALIZATION.
+  CLEAR: wa_fieldcat, lt_tab,lt_fieldcat.
+  s_ebeln-low = '1'.
+  s_ebeln-high = '50000000'.
+  APPEND s_ebeln.
+
+AT SELECTION-SCREEN ON s_ebeln.
+  SELECT SINGLE ebeln INTO lv_ebeln FROM ekko
+  WHERE ebeln IN s_ebeln.
+  IF sy-subrc EQ 0.
+    MESSAGE s001.
+  ELSE.
+    MESSAGE e002.
+  ENDIF.
+
+START-OF-SELECTION.
+
+  PERFORM get_alv_data.
+  PERFORM get_ekko_data.
+
+END-OF-SELECTION.
+
+
+  PERFORM disp_alv_data.
+
+
+FORM get_ekko_data.
+  SELECT ebeln bukrs bstyp Bsart
+    INTO TABLE lt_tab FROM ekko
+    WHERE ebeln IN s_ebeln.
+  IF sy-subrc EQ 0.
+    MESSAGE s001.
+  ELSE.
+    MESSAGE e002.
+  ENDIF.
+ENDFORM.
+
+
+FORM get_alv_data.
+  wa_fieldcat-col_pos = '1'.
+  wa_fieldcat-seltext_l = 'EBELN'.
+  wa_fieldcat-fieldname = 'EBELN'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-col_pos = '2'.
+  wa_fieldcat-seltext_l = 'BSTYP'.
+  wa_fieldcat-fieldname = 'EBSTYP'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+  wa_fieldcat-col_pos = '3'.
+  wa_fieldcat-seltext_l = 'BUKRS'.
+  wa_fieldcat-fieldname = 'BUKRS'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+
+  wa_fieldcat-col_pos = '4'.
+  wa_fieldcat-seltext_l = 'ESART'.
+  wa_fieldcat-fieldname = 'ESART'.
+  wa_fieldcat-tabname  = 'LT_TAB'.
+
+  APPEND wa_fieldcat TO lt_fieldcat.
+  CLEAR wa_fieldcat.
+
+ENDFORM.
+FORM DISP_ALV_dATA.
+  CALL FUNCTION 'REUSE_ALV_POPUP_TO_SELECT'
+    EXPORTING
+    I_TITLE                       = 'ekko data'
+*     I_SELECTION                   = 'X'
+*     I_ALLOW_NO_SELECTION          =
+*   I_ZEBRA                       = 'X'
+*     I_SCREEN_START_COLUMN         = 0
+*     I_SCREEN_START_LINE           = 0
+*     I_SCREEN_END_COLUMN           = 0
+*     I_SCREEN_END_LINE             = 0
+*     I_CHECKBOX_FIELDNAME          =
+*     I_LINEMARK_FIELDNAME          =
+*     I_SCROLL_TO_SEL_LINE          = 'X'
+      i_tabname                     = 'LT_TAB'
+    I_STRUCTURE_NAME              =  'LS_TAB'
+     IT_FIELDCAT                   = LT_FIELDCAT
+*    IT_EXCLUDING                  =
+    I_CALLBACK_PROGRAM            =  SY-REPID
+*     I_CALLBACK_USER_COMMAND       =
+*     IS_PRIVATE                    =
+*   IMPORTING
+*     ES_SELFIELD                   =
+*     E_EXIT                        =
+    tables
+      t_outtab                      = LT_TAB
+*   EXCEPTIONS
+*     PROGRAM_ERROR                 = 1
+*     OTHERS                        = 2
+            .
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+ENDFORM.
+
+************************************************#20*********************************
+
+REPORT Z_GST.
+data: lt_tab type zhema_tt,
+      wa_tab type zhema_str.
+select-options: s_lifnr for wa_tab-lifnr.
+start-of-selection.
+CALL FUNCTION 'ZHEMA_GS'
+ EXPORTING
+   LIFNR             = s_lifnr-low
+   LIFNR2            = s_lifnr-high
+  TABLES
+    gt_hema_tab       = lt_tab.
+perform disp_mat_data.
+
+form disp_mat_data .
+  loop at lt_tab into wa_tab.
+    write : / wa_tab-lifnr,
+              wa_tab-land1,
+              wa_tab-name1,
+              wa_tab-name2,
+              wa_tab-name3.
+
+  endloop.
+endform.
+
+*****************************************#21**************************************
+
+REPORT Z_HEMA_METHODS.
+***class h1 definition.
+***  public section.
+***  class-data var type i.
+***  methods meth1.
+***endclass.
+***
+***class h1 implementation.
+***  method meth1.
+***    var = var + 1.
+***  write: var.
+***  endmethod.
+***endclass.
+***
+***start-of-selection.
+***h1=>var = 3.
+***
+***data: obj1 type ref to h1,
+***      obj2 type ref to h1.
+***create object: obj1,
+***obj2.
+***obj1->meth1( ).
+***obj2->meth1( ).
+
+*********different ways of calling a  method with one import parametr.
+
+*class h2 definition.
+*  public section.
+*  data var2 type i value 3.
+*  methods meth2 importing i_ip type i.
+*endclass.
+*
+*class h2 implementation.
+*  method meth2.
+*    var2 = var2 * i_ip.
+*    write: / var2.
+*  endmethod.
+*endclass.
+*
+*start-of-selection.
+*data : obj1 type ref to h2.
+*create object: obj1.
+*call method obj1->meth2 exporting i_ip = 4.
+*call method obj1->meth2( i_ip = 4 ).
+*obj1->meth2( 5 ).
+
+**********pass by reference can't be changed inside method.*****
+*parameters : p_num type i.
+*data var1 type i.
+*class h3 definition.
+*  public section.
+*  methods : meth2 importing  input1 type i
+*    value(input2) type i.
+*endclass.
+*
+*class h3 implementation.
+*  method meth2.
+*    input2 = 4.
+*   write: input2.
+* endmethod.
+*endclass.
+*
+*start-of-selection.
+*data: i_obj type ref to h3.
+*create object i_obj.
+* var1 = 2.
+* call method i_obj->meth2 exporting input1 = 5
+*   input2 = p_num.
+
+
+****use of export and changing parametrs of a method****
+*parameters p_a(10) type c.
+*data: lv_sal type p decimals 2,
+*      lv_tax type p decimals 2.
+*class h4 definition.
+*  public section.
+*  methods: meth4 importing grade type c
+*    exporting tax type p
+*      changing salary type p.
+*endclass.
+*class h4 implementation.
+*  method: meth4.
+*   case grade.
+*     when 'H1'.
+*       tax = salary * '2.0'.
+*     when 'H2'.
+*       tax = salary * '3.0'.
+*     when 'H3'.
+*       tax = salary * '1.0'.
+*    endcase.
+*    salary = salary - tax.
+*   endmethod.
+*   endclass.
+*  start-of-selection.
+*  data : oref type ref to h4.
+*  create object oref.
+*   lv_sal = 30000.
+*   lv_tax = '0.3'.
+*  write: / 'before meth call salary and atx',
+*  lv_sal, lv_tax.
+* oref->meth4(
+* exporting
+*   grade = p_a
+* importing
+*   tax = lv_tax
+* changing
+*   salary = lv_sal ).
+*
+*write: / 'after meth calling salary and tax',
+*   lv_sal, lv_tax.
+
+*********USE OF RETURNING PARAMETERS IN METHOD*****
+*data res_n type i.
+*CLASS H3 definition.
+*  public section.
+*  methods: meth1 importing input1 type i
+*    input2 type i
+*    returning value(res) type i.
+*endclass.
+*class h3 implementation.
+*  method meth1.
+*    res = input1 * 2 + input2.
+*  endmethod.
+*endclass.
+*start-of-selection.
+*data: obj1 type ref to h3.
+*create object obj1.
+*obj1->meth1(
+* exporting
+*    input1 =  5
+*    input2 = 6
+* receiving res = res_n ).
+* write res_n.
+****syntax 2 ****
+* res_n = obj1->meth1( input1 = 10 input2 = 20 ).
+* move obj1->meth1( input1 = 10 input2 = 20 ) to res_n.
+* write res_n.
+
+******static methods can only use static variables****
+*class h8 definition.
+*  public section.
+*  data var type i value 8.
+*  class-data: cvar type i value 5.
+*  methods: meth1.
+*  class-methods: meth2.
+*endclass.
+*
+*class h8 implementation.
+*  method meth1.
+*    write var.
+*    write cvar.
+*  endmethod.
+*  method meth2.
+**    write var.
+*   write cvar.
+*  endmethod.
+*endclass.
+*
+*start-of-selection.
+*data obj type ref to h8.
+*create object obj.
+*h8=>meth2( ).
+*obj->meth1( ).
+
+******method raising exceptions******.
+class h9 definition.
+  public section.
+  methods: meth1 importing num1 type i
+    exporting num2 type i
+
+      exceptions e1.
+endclass.
+
+class h9 implementation.
+  method meth1.
+    if num1 le 5.
+      message i398(00) with 'should be greater than 5' raising e1.
+    else.
+      num2 = num1 * 5.
+    endif.
+  endmethod.
+endclass.
+
+parameters p_a type i.
+start-of-selection.
+data obj type ref to h9.
+create object obj.
+obj->meth1(
+ exporting
+  num1 = p_a
+ importing
+  num2 = p_a
+  exceptions
+    e1 = 4
+  ).
+if sy-subrc eq 4.
+  message id sy-msgid type sy-msgty number sy-msgno
+  with sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+else.
+  write p_a.
+endif.
+
+*************************************************#22**************************************
+
+***USING AT FIRST, AT LAST, AT NEW
+REPORT Z_ITAB_EVENTS.
+*data: begin of itab occurs 0,
+*  f1 type i,
+*  f2(20) type c,
+*  f3 type n,
+*  f4 type p decimals 3,
+*  end of itab.
+*data: sub_tot(10) type p decimals 2.
+*******1
+*itab-f1 = 20.
+*itab-f2 = 'a'.
+*itab-f3 = 200.
+*itab-f4 = '500.0'.
+*append itab.
+*clear itab.
+*
+*itab-f1 = 30.
+*itab-f2 = 'b'.
+*itab-f3 = 300.
+*itab-f4 = '1000.0'.
+*append itab.
+*clear itab.
+*
+*itab-f1 = 40.
+*itab-f2 = 'c'.
+*itab-f3 = 400.
+*itab-f4 = '1500.0'.
+*append itab.
+*clear itab.
+*
+*itab-f1 = 50.
+*itab-f2 = 'd'.
+*itab-f3 = 500.
+*itab-f4 = '2000.0'.
+*append itab.
+*clear itab.
+*
+*sort itab by f1.
+*loop at itab.
+*  at first.
+*    write: 40 'Material Details'.
+*    uline.
+*  endat.
+*  at new f1.
+*    write: / 'detail of this material' color 4, itab-f1.
+*    uline.
+* endat.
+*
+* write: / itab-f1, itab-f2, itab-f3, itab-f4.
+* sub_tot = sub_tot + itab-f4.
+*
+* at end of f1.
+*   write :/ 'subtotal' color 3 inverse on,
+*   sub_tot color 7 inverse on.
+*   uline.
+*   endat.
+*
+* at last.
+*sum.
+*   uline.
+*   write: / 'total:' , sub_tot, itab-f4.
+*   uline.
+* endat.
+* endloop.
+
+
+types: begin of ty_ekko,
+  ebeln type ekko-ebeln,
+  bukrs type ekko-bukrs,
+  end of ty_ekko.
+
+data: it_ekko type standard table of ty_ekko,
+      wa_ekko type ty_ekko,
+      wa_temp type ty_ekko.
+field-symbols <ebeln>.
+select ebeln bukrs from ekko into table it_ekko up to 10 rows
+  where ebeln ge 40.
+
+write: 'Full Table'.
+loop at it_ekko into wa_ekko.
+  wa_temp = wa_ekko.
+ write:/ sy-tabix, wa_ekko-ebeln, wa_ekko-bukrs.
+endloop.
+
+write:/ 'At first and at last'.
+loop at it_ekko into wa_ekko.
+  wa_temp = wa_ekko.
+  at first.
+    write:/ 'at first'.
+    write: / wa_temp-ebeln, wa_temp-bukrs.
+  endat.
+  at last.
+    write: / 'at last'.
+    write: / wa_temp-ebeln, wa_temp-bukrs.
+  endat.
+endloop.
+
+
+**********************************************#23***********************************
+
+*&---------------------------------------------------------------------*
+REPORT Z_ITAB_PRGS.
+*data: begin of line,
+*  col_1(10) type c,
+*  col_2(20) type c,
+*  end of line.
+*data itab like table of line.
+*
+*line-col_1 = 'UST'.
+*line-col_2 = 'hyd'.
+*append line to itab.
+*clear line.
+*
+*refresh itab.
+*if itab is initial.
+*  write: 'itab is empty'.
+*  free itab.
+*endif.
+
+*****2******
+
+*data: begin of line, """field string
+*  name(10) type c,
+*  age type i,
+*  weight type p decimals 2,
+*  land(5) type c,
+*  end of line.
+
+*types: begin of line,
+*  name(10) type c,
+*  weight type p decimals 2,
+*  age type i,
+*  land(5) type c,
+*  end of line.
+*data itab like standard table of line with non-unique key name age weight land.
+**data itab like sorted table of line with non-unique key name age weight land.
+*
+*line-name = 'hema'.
+*line-age = 20.
+*line-weight = '41.33'.
+*line-land = 'hyd'.
+*
+*line-name = 'doraemon'.
+*line-age = 200.
+*line-weight = '20.33'.
+*line-land = 'jpn'.
+*
+*line-name = 'jian'.
+*line-age = 100.
+*line-weight = '80.99'.
+*line-land = 'jpn'.
+*
+*sort itab by name.
+
+*******insert line*
+*data: begin of line,
+*  col_1 type i,
+*  col_2 type i,
+*end of line.
+
+*data itab like table of line.
+*
+*do 2 times.
+*  line-col_1 = sy-index.
+*  line-col_2 = sy-index ** 2.
+*  append line to itab.
+*enddo.
+*
+*loop at itab into line.
+*  line-col_1 = sy-tabix ** 2.
+*  line-col_2 = sy-tabix ** 3.
+*insert line into itab.
+*endloop.
+
+****modify****
+*data itab like table of line.
+*do 3 times.
+*  line-col_1 = sy-index.
+*  line-col_2 = 2 ** sy-index.
+*  append line to itab.
+*enddo.
+*
+*loop at itab into line.
+*  if sy-tabix = 2.
+*    line-col_1 = sy-tabix * 10.
+*    line-col_2 = sy-tabix * 20.
+*    modify itab from line.
+*  endif.
+* endloop.
+*
+*  loop at itab into line.
+*    write:/ line-col_1, line-col_2, sy-tabix.
+*    endloop.
+
+*****DELETE
+*
+*DATA: BEGIN OF LINE,
+*  col1 TYPE I,
+*  col2 TYPE I,
+*END OF LINE.
+*DATA itab LIKE HASHED TABLE OF LINE WITH UNIQUE key col1.
+*
+*DO 4 TIMES.
+*  LINE-col1 = sy-INDEX.
+*  LINE-col2 = sy-INDEX ** 2.
+*  INSERT LINE INTO TABLE itab.
+*ENDDO.
+*LINE-col1 = 1.
+*DELETE TABLE itab: FROM LINE,
+*WITH TABLE KEY col1 = 3.
+*
+*LOOP AT itab INTO LINE.
+*  WRITE: / LINE-col1, LINE-col2.
+*ENDLOOP.
+
+*
+*COLLECT
+*
+*DATA: BEGIN OF LINE,
+*  col_1(3) TYPE C,
+*  col_2(2) TYPE n,
+*  col_3    TYPE I,
+*END OF LINE.
+*
+*DATA itab LIKE SORTED TABLE OF LINE
+*      WITH NON-UNIQUE KEY col_1  col_2.
+*
+*LINE-col_1 = 'UST'.
+*LINE-col_2 = '12'.
+*LINE-col_3 = 3.
+*
+*COLLECT LINE INTO itab.
+*WRITE / sy-tabix.
+*
+*
+*LINE-col_1 = 'TECH'.
+*LINE-col_2 = '34'.
+*LINE-col_3 = 5.
+*COLLECT LINE INTO itab.
+*WRITE / sy-tabix.
+*
+*
+*LINE-col_1 = 'UST'.
+*LINE-col_2 = '22'.
+*LINE-col_3 = 7.
+*COLLECT LINE INTO itab.
+*
+*WRITE / sy-tabix.
+*LOOP AT itab INTO LINE.
+*  WRITE: / LINE-col_1, LINE-col_2, LINE-col_3.
+*ENDLOOP.
+
+*Data Types
+
+**--------------------------------------------------------------*
+*TYPES: BEGIN OF ty_student,
+*  ID(5)    TYPE n,
+*  name(10) TYPE C,
+*END OF ty_student.
+*
+*
+**READ + INDEX + KEY
+**--------------------------------------------------------------*
+**Data Declaration
+**--------------------------------------------------------------*
+*DATA: gwa_student TYPE ty_student.
+*DATA: it TYPE TABLE OF ty_student.
+*
+*gwa_student-ID    = 1.
+*gwa_student-name  = 'JOHN'.
+*APPEND gwa_student TO it.
+*
+*gwa_student-ID    = 2.
+*gwa_student-name  = 'JIM'.
+*APPEND gwa_student TO it.
+*
+*gwa_student-ID    = 3.
+*gwa_student-name  = 'JACK'.
+*APPEND gwa_student TO it.
+*
+*SORT IT BY ID.
+**** # 1
+*READ TABLE it INTO gwa_student INDEX 2.
+*
+*IF sy-subrc = 0.
+*  WRITE: gwa_student-ID, gwa_student-name.
+*ELSE.
+*  WRITE 'No Record Found'.
+*ENDIF.
+
+***LOOP AT
+***    LOOP AT
+***ENDLOOP.
+
+
+****** # 2
+*READ TABLE it INTO gwa_student WITH KEY name = 'JACK'.
+*IF sy-subrc = 0.
+*  WRITE: gwa_student-ID, gwa_student-name.
+*ELSE.
+*  WRITE 'No Record Found'.
+*ENDIF.
+
+
+****FIELD-SYMBOLS  &C
+
+********* # 1
+*DATA : F1(20) TYPE C.
+*
+*FIELD-SYMBOLS <FS_UST>.
+*
+*F1 = 'UST TECH'.
+*
+*ASSIGN F1 TO <FS_UST>.
+*
+*WRITE : <FS_UST>.
+
+*----------------------------------
+* # 2
+*----------------------------------
+data: begin of line,  " field string
+        col_1 type i,
+        col_2 type i,
+      end of line.
+
+data itab like sorted table of line with unique key col_1.
+
+field-symbols <fs> like line of itab.
+
+
+do 10 times.
+  line-col_1   =   sy-index.
+  line-col_2   =   2   *   sy-index.
+  append line to itab.
+enddo.
+
+LOOP AT itab INTO LINE  .  " itab to fld
+  WRITE: / LINE-col_1, LINE-col_2.  " LINE-weight, LINE-land.
+ENDLOOP.
+
+*************READ TABLE<<<<<<<<<
+
+read table itab assigning <fs> index 5.
+*CLEAR <fs>.
+write:   sy-subrc, sy-tabix.
+write: / <fs>-col_1, <fs>-col_2.
+
+***************************************#24******************************
+
+REPORT Z_MARAMKAT.
+types: begin of ls_tab,
+  matnr type mara-matnr,
+  ersda type mara-ersda,
+  ernam type mara-ernam,
+
+  spras type spras,
+  maktx type maktx,
+  maktg type maktg,
+  end of ls_tab.
+data: lt_tab type standard table of ls_tab,
+      wa_tab type ls_tab.
+data lv_matnr type mara-matnr.
+
+select mara~matnr mara~ersda mara~ernam makt~spras makt~maktx makt~maktg into table lt_tab
+  from mara inner join makt on
+  mara~matnr = makt~matnr
+  where mara~matnr = 'acf_132'.
+loop at lt_tab into wa_tab.
+  write: / wa_tab-matnr,
+  wa_tab-ersda, wa_tab-ernam, wa_tab-spras, wa_tab-maktx, wa_tab-maktg.
+endloop.
+
+***************************************************#25************************************************
+
+REPORT Z_USERINTERACT no standard page heading line-count 20(3) line-size 400
+message-id zhema_msgs.
+load-of-program.
+include zhemainc.
+select-options s_vbeln for wa_tab-vbeln obligatory.
+initialization .
+clear: wa_tab, lt_tab.
+s_vbeln-low = '1'.
+s_vbeln-high = '100'.
+append s_vbeln.
+
+at selection-screen on s_vbeln.
+  select single vbeln into lv_vbeln from vbak
+    where vbeln in s_vbeln.
+ if sy-subrc eq 0.
+   message s001.
+ else.
+   message e002.
+ endif.
+ start-of-selection.
+ set pf-status 'ZHEMA_PFS'.
+ perform get_data1.
+ end-of-selection.
+ perform disp_data1.
+ data lv_count type i.
+ lv_count = sy-licnt - sy-linno.
+ skip lv_count.
+
+ top-of-page.
+ uline.
+  write :/ 'Records are found in marc table', 'the curent list index is :  ', sy-lsind.
+  write :/ 'Ma',
+         30 'Mat Ind',
+         40 'Mat Type',
+         55 'Mat UOM',
+         70 'Gross Weight',
+         90 'Net weight'.
+  uline.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
